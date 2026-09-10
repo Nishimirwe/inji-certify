@@ -9,6 +9,7 @@ import io.mosip.certify.entity.CredentialStatusTransaction;
 import io.mosip.certify.entity.StatusListCredential;
 import io.mosip.certify.repository.CredentialStatusTransactionRepository;
 import io.mosip.certify.repository.StatusListCredentialRepository;
+import io.mosip.certify.utils.BitStringStatusListUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,13 +60,15 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     private String validateCredentialStatus(String requestedPurpose, Long statusListIndex,
                                             StatusListCredential statusListCredential) {
-        // Validate statusListIndex
+        // Validate statusListIndex using shared utility
+        // This ensures the effective 16 KB minimum and overflow/maximum checks match batch processing
+        long maxCapacity = BitStringStatusListUtils.safeConvertKBToBits(statusListCredential.getCapacityInKB());
+
         if (statusListIndex < 0) {
             throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
                 "statusListIndex must be non-negative, received: " + statusListIndex);
         }
 
-        long maxCapacity = statusListCredential.getCapacityInKB() * 1024L * 8L;
         if (statusListIndex >= maxCapacity) {
             throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
                 "statusListIndex " + statusListIndex + " exceeds maximum capacity " +

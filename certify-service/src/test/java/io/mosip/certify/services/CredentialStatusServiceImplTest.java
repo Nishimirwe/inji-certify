@@ -155,7 +155,7 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_InvalidStatusPurpose_ThrowsException() {
+    public void should_throwInvalidStatusPurposeException_when_statusPurposeIsInvalid() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusPurpose("invalid_purpose"); // Invalid status purpose
@@ -177,7 +177,7 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_MismatchedStatusPurpose_ThrowsException() {
+    public void should_throwInvalidStatusPurposeException_when_statusPurposeMismatchesStatusList() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusPurpose("suspension"); // Different purpose
@@ -199,7 +199,7 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_NegativeStatusListIndex_ThrowsException() {
+    public void should_throwIndexOutOfBoundsException_when_statusListIndexIsNegative() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusListIndex(-1L); // Negative index
@@ -219,14 +219,15 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_StatusListIndexExceedsCapacity_ThrowsException() {
+    public void should_throwIndexOutOfBoundsException_when_statusListIndexExceedsCapacity() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
 
-        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max index is 8191)
-        long capacityInKB = 1L;
-        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
-        request.getCredentialStatus().setStatusListIndex(maxCapacity + 100); // 8292 (exceeds capacity)
+        // Set capacity to 20KB (above 16KB minimum)
+        // 20KB = 20 * 1024 * 8 = 163840 bits (max index is 163839)
+        long capacityInKB = 20L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 163840
+        request.getCredentialStatus().setStatusListIndex(maxCapacity + 100); // 163940 (exceeds capacity)
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
@@ -245,14 +246,15 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_StatusListIndexAtMaxCapacity_ThrowsException() {
+    public void should_throwIndexOutOfBoundsException_when_statusListIndexIsAtMaxCapacityBoundary() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
 
-        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max index is 8191)
-        long capacityInKB = 1L;
-        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
-        request.getCredentialStatus().setStatusListIndex(maxCapacity); // 8192 (exactly at boundary, should fail)
+        // Set capacity to 20KB (above 16KB minimum)
+        // 20KB = 20 * 1024 * 8 = 163840 bits (max index is 163839)
+        long capacityInKB = 20L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 163840
+        request.getCredentialStatus().setStatusListIndex(maxCapacity); // 163840 (exactly at boundary, should fail)
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
@@ -271,14 +273,15 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_StatusListIndexAtMaxCapacityMinusOne_Success() {
+    public void should_updateCredentialStatusSuccessfully_when_statusListIndexIsAtMaxValidBoundary() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
 
-        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max valid index is 8191)
-        long capacityInKB = 1L;
-        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
-        request.getCredentialStatus().setStatusListIndex(maxCapacity - 1); // 8191 (valid boundary)
+        // Set capacity to 20KB (above 16KB minimum)
+        // 20KB = 20 * 1024 * 8 = 163840 bits (max valid index is 163839)
+        long capacityInKB = 20L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 163840
+        request.getCredentialStatus().setStatusListIndex(maxCapacity - 1); // 163839 (valid boundary)
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
