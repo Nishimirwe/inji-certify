@@ -76,6 +76,7 @@ public class CredentialStatusServiceImplTest {
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
@@ -94,6 +95,7 @@ public class CredentialStatusServiceImplTest {
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
@@ -120,20 +122,6 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_NullStatusListIndex_ThrowsException() {
-        String statusListCredential = "https://example.com/status-list/xyz#87823";
-        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
-        request.getCredentialStatus().setStatusListIndex(null); // Null StatusListIndex
-
-        CertifyException exception = assertThrows(CertifyException.class, () -> {
-            credentialStatusService.updateCredentialStatus(request);
-        });
-
-        assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
-        assertEquals("Status List Credential not found for ID: https://example.com/status-list/xyz#87823", exception.getMessage());
-    }
-
-    @Test
     public void updateCredentialStatusV2_EmptyStatusPurpose_UsesStatusListCredentialPurpose() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
@@ -141,6 +129,7 @@ public class CredentialStatusServiceImplTest {
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
         when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
@@ -163,6 +152,148 @@ public class CredentialStatusServiceImplTest {
 
         assertEquals("status_list_not_found_for_the_given_id", exception.getErrorCode());
         assertEquals("Status List Credential not found for ID: invalid-format", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_InvalidStatusPurpose_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose("invalid_purpose"); // Invalid status purpose
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setId(statusListCredential);
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L); // 1MB capacity
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("invalid_status_purpose", exception.getErrorCode());
+        assertEquals("statusPurpose mismatch: requested 'invalid_purpose' but status list '" +
+                statusListCredential + "' has purpose 'revocation'", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_MismatchedStatusPurpose_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose("suspension"); // Different purpose
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setId(statusListCredential);
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L); // 1MB capacity
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("invalid_status_purpose", exception.getErrorCode());
+        assertEquals("statusPurpose mismatch: requested 'suspension' but status list '" +
+                statusListCredential + "' has purpose 'revocation'", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_NegativeStatusListIndex_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusListIndex(-1L); // Negative index
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L); // 1MB capacity
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("requested_index_is_out_of_bounds_for_status_list_capacity", exception.getErrorCode());
+        assertEquals("statusListIndex must be non-negative, received: -1", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_StatusListIndexExceedsCapacity_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+
+        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max index is 8191)
+        long capacityInKB = 1L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
+        request.getCredentialStatus().setStatusListIndex(maxCapacity + 100); // 8292 (exceeds capacity)
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(capacityInKB);
+        mockStatusListCredential.setId(statusListCredential);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("requested_index_is_out_of_bounds_for_status_list_capacity", exception.getErrorCode());
+        assertEquals("statusListIndex " + (maxCapacity + 100) + " exceeds maximum capacity " +
+                maxCapacity + " for status list '" + statusListCredential + "'", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_StatusListIndexAtMaxCapacity_ThrowsException() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+
+        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max index is 8191)
+        long capacityInKB = 1L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
+        request.getCredentialStatus().setStatusListIndex(maxCapacity); // 8192 (exactly at boundary, should fail)
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(capacityInKB);
+        mockStatusListCredential.setId(statusListCredential);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("requested_index_is_out_of_bounds_for_status_list_capacity", exception.getErrorCode());
+        assertEquals("statusListIndex " + maxCapacity + " exceeds maximum capacity " +
+                maxCapacity + " for status list '" + statusListCredential + "'", exception.getMessage());
+    }
+
+    @Test
+    public void updateCredentialStatusV2_StatusListIndexAtMaxCapacityMinusOne_Success() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+
+        // Set capacity to 1KB = 1024 bytes = 1024 * 8 = 8192 bits (max valid index is 8191)
+        long capacityInKB = 1L;
+        long maxCapacity = capacityInKB * 1024L * 8L; // 8192
+        request.getCredentialStatus().setStatusListIndex(maxCapacity - 1); // 8191 (valid boundary)
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(capacityInKB);
+        mockStatusListCredential.setId(statusListCredential);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+        when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+
+        assertNotNull(response);
+        assertEquals(maxCapacity - 1, response.getStatusListIndex());
+        assertEquals("revocation", response.getStatusPurpose());
     }
 
     private UpdateCredentialStatusRequest createValidUpdateCredentialRequest(String statusListCredential) {
