@@ -777,7 +777,6 @@ public class CredentialConfigurationSupportedServiceImplTest {
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
             assertEquals("signatureAlgo is required when qrSignatureAlgo is provided.", ex.getMessage());
-            ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true);
         }
     }
 
