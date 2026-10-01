@@ -199,6 +199,28 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
+    public void should_throwInvalidRequest_when_statusListIndexIsNull() {
+        // Reachable only by calling the service directly: over HTTP, @Valid rejects a null
+        // index first. Without the guard this was a NullPointerException from auto-unboxing.
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusListIndex(null);
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
+
+        assertEquals("invalid_request", exception.getErrorCode());
+        assertEquals("statusListIndex is required", exception.getMessage());
+    }
+
+    @Test
     public void should_throwIndexOutOfBoundsException_when_statusListIndexIsNegative() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);

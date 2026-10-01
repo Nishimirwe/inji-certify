@@ -60,14 +60,22 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     private String validateCredentialStatus(String requestedPurpose, Long statusListIndex,
                                             StatusListCredential statusListCredential) {
-        // Validate statusListIndex using shared utility
-        // This ensures the effective 16 KB minimum and overflow/maximum checks match batch processing
-        long maxCapacity = BitStringStatusListUtils.safeConvertKBToBits(statusListCredential.getCapacityInKB());
+        // The controller's @Valid binding rejects a null index before it gets here, but this
+        // is a public service on an SPI interface: a direct caller skips bean validation, and
+        // the unboxing in the comparison below would turn a null into a NullPointerException.
+        if (statusListIndex == null) {
+            throw new CertifyException(ErrorConstants.INVALID_REQUEST, "statusListIndex is required");
+        }
 
         if (statusListIndex < 0) {
             throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
                 "statusListIndex must be non-negative, received: " + statusListIndex);
         }
+
+        // Validate statusListIndex using shared utility, after the cheap checks above so the
+        // KB->bits conversion only runs for an index that could be in range.
+        // This ensures the effective 16 KB minimum and overflow/maximum checks match batch processing
+        long maxCapacity = BitStringStatusListUtils.safeConvertKBToBits(statusListCredential.getCapacityInKB());
 
         if (statusListIndex >= maxCapacity) {
             throw new CertifyException(ErrorConstants.INDEX_OUT_OF_BOUNDS,
