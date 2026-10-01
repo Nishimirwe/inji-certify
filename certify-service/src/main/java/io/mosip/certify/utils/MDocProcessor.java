@@ -45,6 +45,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class MDocProcessor {
 
+    /**
+     * ISO/IEC 18013-5: ValidityInfo timestamps shall not use fractions of seconds
+     * and shall use a UTC offset of 00:00, as indicated by the character "Z".
+     */
+    private static final DateTimeFormatter VALIDITY_INFO_DATETIME_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'");
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -83,7 +90,7 @@ public class MDocProcessor {
             );
 
             ZonedDateTime currentTime = ZonedDateTime.now(ZoneOffset.UTC);
-            String formattedCurrentTime = currentTime.format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+            String formattedCurrentTime = currentTime.format(VALIDITY_INFO_DATETIME_FORMATTER);
 
             if ("${_validFrom}".equals(validFromValue)) {
                 validity.put(VCDM2Constants.VALID_FROM, createCBORTaggedDateTime(formattedCurrentTime));
@@ -93,7 +100,7 @@ public class MDocProcessor {
             }
             if ("${_validUntil}".equals(validUntilValue)) {
                 String futureTime = currentTime.plusYears(mDocConfig.getValidityPeriodYears())
-                        .format(DateTimeFormatter.ofPattern(Constants.UTC_DATETIME_PATTERN));
+                        .format(VALIDITY_INFO_DATETIME_FORMATTER);
                 validity.put(VCDM2Constants.VALID_UNTIL, createCBORTaggedDateTime(futureTime));
             }
 

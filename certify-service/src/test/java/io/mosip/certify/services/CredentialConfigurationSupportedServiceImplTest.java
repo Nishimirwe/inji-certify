@@ -1,6 +1,7 @@
 package io.mosip.certify.services;
 
 import io.mosip.certify.core.dto.*;
+import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.constants.VCFormats;
 import io.mosip.certify.core.exception.CertifyException;
 import io.mosip.certify.core.exception.CredentialConfigException;
@@ -699,7 +700,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void validateCredentialConfiguration_QrSettingsNull_QrSignatureAlgoSet_ThrowsException() {
+    public void should_throwCertifyException_when_qrSettingsNullAndQrSignatureAlgoSet() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
         dto.setVcTemplate("test_template");
@@ -713,7 +714,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void validateCredentialConfiguration_QrSettingsEmpty_QrSignatureAlgoSet_ThrowsException() {
+    public void should_throwCertifyException_when_qrSettingsEmptyAndQrSignatureAlgoSet() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
         dto.setVcTemplate("test_template");
@@ -727,7 +728,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void validateCredentialConfiguration_QrSettingsPresent_UnsupportedQrSignatureAlgo_ThrowsException() {
+    public void should_throwCertifyException_when_qrSignatureAlgoUnsupported() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
         dto.setVcTemplate("test_template");
@@ -742,7 +743,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void validateCredentialConfiguration_QrSettingsPresent_SupportedQrSignatureAlgo_AllowsConfig() {
+    public void should_allowCredentialConfiguration_when_qrSignatureAlgoSupported() {
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
         dto.setVcTemplate("test_template");
@@ -776,6 +777,7 @@ public class CredentialConfigurationSupportedServiceImplTest {
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
             assertEquals("signatureAlgo is required when qrSignatureAlgo is provided.", ex.getMessage());
+            ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true);
         }
     }
 

@@ -51,6 +51,10 @@ public class Constants {
 
     public static final String _HOLDER_ID = "_holderId";
     public static final String CREDENTIAL_CONFIGURATIONS_SUPPORTED = "credential_configurations_supported";
+    public static final String PROOF_SIGNING_ALG_VALUES_SUPPORTED = "proof_signing_alg_values_supported";
+    public static final String CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED = "cryptographic_binding_methods_supported";
+    public static final String CREDENTIAL_SIGNING_ALG_VALUES_SUPPORTED = "credential_signing_alg_values_supported";
+    public static final String PROOF_TYPES_SUPPORTED = "proof_types_supported";
     public static final String MANDATORY = "mandatory";
     public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";
