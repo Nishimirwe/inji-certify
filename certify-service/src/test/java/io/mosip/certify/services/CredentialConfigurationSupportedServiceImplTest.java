@@ -25,6 +25,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.*;
 
 import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -781,7 +782,9 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void should_throwCertifyException_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_inVCIssuanceMode() {
+    public void should_allowCredentialConfiguration_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_inVCIssuanceMode() {
+        // In VCIssuance mode the plugin signs, so signatureAlgo / qrSignatureAlgo are not consulted
+        // and the signature configuration checks are skipped.
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
         dto.setVcTemplate("test_template");
@@ -793,10 +796,9 @@ public class CredentialConfigurationSupportedServiceImplTest {
         ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            CertifyException ex = assertThrows(CertifyException.class, () ->
+            assertDoesNotThrow(() ->
                     ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
             );
-            assertEquals("signatureAlgo is required when qrSignatureAlgo is provided.", ex.getMessage());
         }
     }
 

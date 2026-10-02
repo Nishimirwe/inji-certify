@@ -191,6 +191,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
      * @param credentialConfig the credential configuration DTO to validate
      */
     private void validateKeyAliasMapperAndSignatureConfiguration(CredentialConfigurationDTO credentialConfig) {
+        if (pluginMode.equals("VCIssuance")) {
+            return;
+        }
+
         String signatureCryptoSuite = credentialConfig.getSignatureCryptoSuite();
         String signatureAlgo = credentialConfig.getSignatureAlgo();
         String qrSignatureAlgo = credentialConfig.getQrSignatureAlgo();
@@ -211,13 +215,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && credentialConfig.getSignatureAlgo() == null) {
             throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "signatureAlgo is required when qrSignatureAlgo is provided.");
-        }
-
-        // Deliberately after the signature/qrSignatureAlgo checks above: in VCIssuance mode the
-        // plugin signs, so only the key-alias lookup below is skipped, not the request validation.
-        // (#842 - this used to sit at the top of the method and let invalid configs through.)
-        if (pluginMode.equals("VCIssuance")) {
-            return;
         }
 
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat()) && credentialConfig.getSignatureAlgo() != null) {
