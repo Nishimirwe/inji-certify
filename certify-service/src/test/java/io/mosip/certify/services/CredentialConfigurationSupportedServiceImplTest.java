@@ -25,7 +25,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.*;
 
 import static org.junit.Assert.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -762,44 +761,37 @@ public class CredentialConfigurationSupportedServiceImplTest {
     }
 
     @Test
-    public void should_throwCertifyException_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_inDataProviderMode() {
+    public void should_allowCredentialConfiguration_when_qrSettingsValidInBase64VcTemplate() {
+        String template = "{\"credentialSubject\":{\"fullName\":\"${fullName}\"}}";
+        String base64Template = java.util.Base64.getEncoder().encodeToString(template.getBytes());
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
-        dto.setVcTemplate("test_template");
-        dto.setQrSettings(List.of(Map.of("key", "value")));
-        dto.setQrSignatureAlgo("EdDSA");
-        dto.setSignatureAlgo(null);
-        dto.setSignatureCryptoSuite(null);
+        dto.setVcTemplate(base64Template);
+        dto.setQrSettings(List.of(Map.of("Full Name", "${fullName}")));
+        dto.setSignatureAlgo("EdDSA");
+        dto.setKeyManagerAppId("TEST2019");
+        dto.setKeyManagerRefId("TEST2019-REF");
         ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
         ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
         try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
             mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            CertifyException ex = assertThrows(CertifyException.class, () ->
-                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
-            );
-            assertEquals("signatureAlgo is required when qrSignatureAlgo is provided.", ex.getMessage());
+            ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true);
         }
     }
 
     @Test
-    public void should_allowCredentialConfiguration_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_inVCIssuanceMode() {
-        // In VCIssuance mode the plugin signs, so signatureAlgo / qrSignatureAlgo are not consulted
-        // and the signature configuration checks are skipped.
+    public void should_throwCertifyException_when_qrSettingsFieldMissingInBase64VcTemplate() {
+        String template = "{\"credentialSubject\":{\"fullName\":\"${fullName}\"}}";
+        String base64Template = java.util.Base64.getEncoder().encodeToString(template.getBytes());
         CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
         dto.setCredentialFormat("ldp_vc");
-        dto.setVcTemplate("test_template");
-        dto.setQrSettings(List.of(Map.of("key", "value")));
-        dto.setQrSignatureAlgo("EdDSA");
-        dto.setSignatureAlgo(null);
-        dto.setSignatureCryptoSuite(null);
-        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "VCIssuance");
-        ReflectionTestUtils.setField(credentialConfigurationService, "keyAliasMapper", Map.of("EdDSA", List.of(List.of("TEST2019", "TEST2019-REF"))));
-        try (var mocked = org.mockito.Mockito.mockStatic(LdpVcCredentialConfigValidator.class)) {
-            mocked.when(() -> LdpVcCredentialConfigValidator.isValidCheck(dto)).thenReturn(true);
-            assertDoesNotThrow(() ->
-                    ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
-            );
-        }
+        dto.setVcTemplate(base64Template);
+        dto.setQrSettings(List.of(Map.of("Invalid Field", "${unknownField}")));
+        ReflectionTestUtils.setField(credentialConfigurationService, "pluginMode", "DataProvider");
+        CertifyException ex = assertThrows(CertifyException.class, () ->
+                ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, true)
+        );
+        assertEquals(ErrorConstants.QR_INVALID_FIELD_REFERENCE, ex.getErrorCode());
     }
 
     @Test

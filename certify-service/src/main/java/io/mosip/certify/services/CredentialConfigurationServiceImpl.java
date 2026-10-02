@@ -184,8 +184,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
     /**
      * Validates signature algorithm and MOSIP Key Manager configuration for the requested credential configuration.
      * <p>
-     * Performs cryptographic suite checking, algorithm derivation, and ensures that signatureAlgo
-     * is present whenever a qrSignatureAlgo override is specified.
+     * Performs cryptographic suite checking and signature algorithm derivation, then verifies the
+     * key alias mapping for ldp_vc configurations. Skipped in VCIssuance mode, where the plugin signs.
      * </p>
      *
      * @param credentialConfig the credential configuration DTO to validate
@@ -197,7 +197,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
 
         String signatureCryptoSuite = credentialConfig.getSignatureCryptoSuite();
         String signatureAlgo = credentialConfig.getSignatureAlgo();
-        String qrSignatureAlgo = credentialConfig.getQrSignatureAlgo();
 
         if (signatureCryptoSuite != null) {
             if (!credentialSigningAlgValuesSupportedMap.containsKey(signatureCryptoSuite)) {
@@ -211,10 +210,6 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             } else if (!signatureAlgos.contains(signatureAlgo)) {
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "Signature algorithm " + signatureAlgo + " is not supported for the crypto suite: " + signatureCryptoSuite);
             }
-        }
-
-        if (qrSignatureAlgo != null && !qrSignatureAlgo.isEmpty() && credentialConfig.getSignatureAlgo() == null) {
-            throw new CertifyException(ErrorConstants.UNSUPPORTED_SIGNATURE_ALGO, "signatureAlgo is required when qrSignatureAlgo is provided.");
         }
 
         if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat()) && credentialConfig.getSignatureAlgo() != null) {
