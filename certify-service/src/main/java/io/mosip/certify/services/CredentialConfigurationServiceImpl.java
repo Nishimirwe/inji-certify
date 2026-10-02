@@ -212,8 +212,8 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
             }
         }
 
-        if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat()) && credentialConfig.getSignatureAlgo() != null) {
-            List<List<String>> keyAliasList = keyAliasMapper.get(credentialConfig.getSignatureAlgo());
+        if (VCFormats.LDP_VC.equals(credentialConfig.getCredentialFormat())) {
+            List<List<String>> keyAliasList = keyAliasMapper.get(signatureAlgo);
             if (keyAliasList == null || keyAliasList.isEmpty()) {
                 throw new CertifyException(ErrorConstants.KEY_CHOOSER_CONFIG_NOT_FOUND, "No key chooser configuration found for the signature crypto suite: " + credentialConfig.getSignatureCryptoSuite());
             }
