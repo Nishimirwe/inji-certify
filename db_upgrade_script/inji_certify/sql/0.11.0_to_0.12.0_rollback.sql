@@ -1,7 +1,3 @@
--- This Source Code Form is subject to the terms of the Mozilla Public
--- License, v. 2.0. If a copy of the MPL was not distributed with this
--- file, You can obtain one at https://mozilla.org/MPL/2.0/.
--- -------------------------------------------------------------------------------------------------
 -- Database Name: inji_certify
 -- Table Name : credential_config, credential_template
 -- Purpose    : To remove Certify v0.12.0 changes and make DB ready for Certify v0.11.0

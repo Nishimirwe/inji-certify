@@ -9,7 +9,7 @@ conventions that agents need to work effectively in this codebase.
 
 Inji Certify is an **OpenID4VCI 1.0 compliant Verifiable Credential issuance service**. It signs and issues credentials
 in W3C JSON-LD (`ldp_vc`), SD-JWT (`dc+sd-jwt`), and mock mDL (`mso_mdoc`) formats. It is a Spring Boot 3.2.3 / Java 21
-multi-module Maven project licensed under MPL 2.0.
+multi-module Maven project licensed under Apache 2.0.
 
 - **GitHub**: https://github.com/inji/inji-certify
 - **Docs**: https://docs.inji.io/inji-certify/overview
@@ -109,9 +109,9 @@ The downgrade guard is the point of the feature: accepting a sender-constrained 
 discard exactly the protection the binding provides, so a stolen token would work again.
 
 `DpopProofValidator` decides everything about the proof — structure, signature, `htm`/`htu` request binding, `ath` token
-binding, `cnf.jkt` key binding, freshness, and single use. The `jti` replay cache is `dpopJti`; its TTL **must** exceed
-`proof-max-age + clock-skew`, or a proof stays replayable after its jti is evicted. Replay is checked last, so a request
-rejected for any other reason does not burn a valid jti.
+binding, `cnf.jkt` key binding, freshness, and single use. The `jti` replay cache is `dpopJti`; its TTL **must** be at
+least `proof-max-age + 2 × clock-skew`, or a proof stays replayable after its jti is evicted, and startup fails below it.
+Replay is checked last, so a request rejected for any other reason does not burn a valid jti.
 
 Certify does not issue DPoP-bound tokens — the authorization server does. eSignet stamps `cnf.jkt` only for clients
 registered with `additionalConfig.dpop_bound_access_tokens: true`, and that arrived in eSignet **1.8**; against an older
@@ -121,7 +121,7 @@ Failures answer `401` with a `WWW-Authenticate` challenge **in the scheme the ca
 `error_description`, and for `invalid_dpop_proof` an `algs` list. The description names the failing claim, so a wallet
 developer is told which check rejected the proof rather than a bare `invalid_dpop_proof`.
 
-See `docs/postman-collections/README-mock-identity-dpop.md` for the 26-scenario conformance suite covering each rule.
+See `docs/postman_collections/authorization_code_flow/data_provider_plugin/README-mock-identity-dpop.md` for the 26-scenario conformance suite covering each rule.
 
 ---
 
@@ -178,8 +178,8 @@ mosip.certify.authn.jwk-set-uri=...
 mosip.certify.dpop.allowed-algorithms=ES256,ES384,ES512,RS256,PS256,EdDSA
 mosip.certify.dpop.proof-max-age=60
 mosip.certify.dpop.clock-skew=10
-# MUST exceed proof-max-age + clock-skew, or an evicted jti leaves its proof replayable
-mosip.certify.dpop.jti.expire.seconds=120
+# MUST be at least proof-max-age + 2 x clock-skew, or an evicted jti leaves its proof replayable
+mosip.certify.dpop.jti.cache-expire-seconds=120
 
 # Issuer identity
 mosip.certify.domain.url=http://localhost:8090
@@ -237,8 +237,8 @@ Switch to Redis by setting `spring.cache.type=redis` and configuring `spring.dat
 - [Sample local config](./certify-service/src/main/resources/application-local.properties)
 - [DB scripts](./db_scripts/)
 - [Docker Compose quickstart](./docker-compose/docker-compose-injistack/README.md)
-- [Local dev guide](./docs/Local-Development.md)
-- [Credential config guide](./docs/Credential-Issuer-Configuration.md)
-- [VCIssuance vs DataProvider](./docs/VCIssuance-vs-DataProvider.md)
-- [SD-JWT support](./docs/SD-JWT-Support.md)
-- [VC Revocation](./docs/VC-Revocation-Support.md)
+- [Local dev guide](./docs/technical_docs/Local_Development.md)
+- [Credential config guide](./docs/technical_docs/Credential_Issuer_Configuration.md)
+- [VCIssuance vs DataProvider](./docs/technical_docs/VCIssuance_Vs_DataProvider.md)
+- [SD-JWT support](./docs/technical_docs/SD_JWT_Support.md)
+- [VC Revocation](./docs/technical_docs/VC_Revocation_Support.md)

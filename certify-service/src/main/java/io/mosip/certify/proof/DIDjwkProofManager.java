@@ -1,8 +1,3 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
 package io.mosip.certify.proof;
 
 import com.nimbusds.jose.JWSHeader;
@@ -69,7 +64,7 @@ public class DIDjwkProofManager implements JwtProofKeyManager {
         if (header.getJWK() != null) {
             // 1. Convert JWK back to DID:jwk
             byte[] keyBytes = header.getJWK().toJSONString().getBytes(StandardCharsets.UTF_8);
-            return Optional.of(DID_JWK_PREFIX.concat(Base64.getUrlEncoder().encodeToString(keyBytes)));
+            return Optional.of(DID_JWK_PREFIX.concat(Base64.getUrlEncoder().withoutPadding().encodeToString(keyBytes)));
         } else if (header.getKeyID().startsWith(DID_JWK_PREFIX)) {
             return Optional.of(header.getKeyID());
         }

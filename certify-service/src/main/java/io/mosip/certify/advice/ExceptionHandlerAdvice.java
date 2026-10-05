@@ -1,8 +1,3 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
 package io.mosip.certify.advice;
 
 import io.mosip.certify.core.constants.Constants;
@@ -149,6 +144,10 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             return new ResponseEntity<ResponseWrapper>(getResponseWrapper(INVALID_REQUEST, ex.getMessage()),
                     HttpStatus.OK);
         }
+        if(ex instanceof CredentialConfigValidationException) {
+            return new ResponseEntity<ResponseWrapper>(
+                    getResponseWrapper(((CredentialConfigValidationException) ex).getErrors()), HttpStatus.OK);
+        }
         if(ex instanceof CertifyException) {
             String errorCode = ((CertifyException) ex).getErrorCode();
             String errorMessage = ex.getMessage();
@@ -216,6 +215,11 @@ public class ExceptionHandlerAdvice extends ResponseEntityExceptionHandler imple
             Object code = request.getAttribute(Constants.AUTH_ERROR_CODE_ATTRIBUTE);
             String errorCode = (code instanceof String) ? (String) code : ((CertifyException) ex).getErrorCode();
             String description = (reason instanceof String) ? (String) reason : getMessage(errorCode, errorCode);
+            // The token could not be judged because this deployment is misconfigured. A 401
+            // challenge would tell the caller to fix a credential that may be perfectly valid.
+            if(SERVER_ERROR.equals(errorCode)) {
+                return new ResponseEntity<>(getVCErrorDto(errorCode, description), HttpStatus.INTERNAL_SERVER_ERROR);
+            }
             HttpHeaders headers = new HttpHeaders();
             // RFC 9449 §7.1: challenge in the scheme the caller used, so a DPoP client is
             // not told to retry with Bearer - which it must not do for a bound token. The

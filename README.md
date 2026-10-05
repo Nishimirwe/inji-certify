@@ -71,7 +71,7 @@ issuance workflows.
 
 ### How to Use Plugins
 
-* **[Overview: Choosing the Right Plugin](./docs/VCIssuance-vs-DataProvider.md)** – Learn the differences between the
+* **[Overview: Choosing the Right Plugin](./docs/technical_docs/VCIssuance_Vs_DataProvider.md)** – Learn the differences between the
   two plugin types and how to decide which suits your issuer requirements.
 * **[Postgres Data Provider
   Plugin](https://github.com/inji/digital-credential-plugins/tree/master/postgres-dataprovider-plugin)** – Example
@@ -111,7 +111,7 @@ Inji Certify supporting two mode of deployment to cater different users with dif
 * **Local Setup without Docker Compose**
 * Recommended for developers or community contributors who want to perform debugging or gain a deeper understanding of
   the Inji Certify codebase.
-* Refer to [this guide](./docs/Local-Development.md) to try this mode of setup.
+* Refer to [this guide](./docs/technical_docs/Local_Development.md) to try this mode of setup.
 * This is for developers, community members, and country representatives to explore the application, demonstrate its
   usage to external stakeholders, or conduct proof-of-concepts (POCs).
 
@@ -168,9 +168,9 @@ mosip.certify.dpop.allowed-algorithms=ES256,ES384,ES512,RS256,PS256,EdDSA
 # How old a proof's iat may be, and the tolerance for clock drift on either side
 mosip.certify.dpop.proof-max-age=60
 mosip.certify.dpop.clock-skew=10
-# TTL of the replay cache. MUST be at least proof-max-age + clock-skew: a jti dropped
-# while its proof is still fresh leaves that proof replayable.
-mosip.certify.dpop.jti.expire.seconds=120
+# TTL of the replay cache. MUST be at least proof-max-age + 2 x clock-skew: a proof
+# stays acceptable that long, and Certify refuses to start with a shorter dpopJti TTL.
+mosip.certify.dpop.jti.cache-expire-seconds=120
 ```
 
 **Note**: the authorization server issues the binding, not Certify. eSignet does so only for clients registered with
@@ -191,7 +191,7 @@ Refer to [SQL scripts](./db_scripts/README.md) and go through its README.
 
 ### Upgrade from 0.11.0 to 0.12.0
 
-Please refer to step-by-step [migration guide](./docs/Migration-Guide-0.11.0-to-0.12.0.md) for upgrade from 0.11.0 to
+Please refer to step-by-step [migration guide](./docs/technical_docs/Migration_Guide_0.11.0_To_0.12.0.md) for upgrade from 0.11.0 to
 0.12.0.
 
 ## Upcoming Features

@@ -1,8 +1,3 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
 package io.mosip.certify.core.constants;
 
 public class Constants {
@@ -32,6 +27,7 @@ public class Constants {
     public  static final String SIGNATURE_CRYPTO_SUITE = "SIGNATURE_CRYPTO_SUITE";
     public  static final String VCTYPE = "vct";
     public  static final String CONFIRMATION = "cnf";
+    public static final String JKT = "jkt";
     public  static final String ISSUER = "iss";
     public static final String TYPE = "type";
 
@@ -51,6 +47,10 @@ public class Constants {
 
     public static final String _HOLDER_ID = "_holderId";
     public static final String CREDENTIAL_CONFIGURATIONS_SUPPORTED = "credential_configurations_supported";
+    public static final String PROOF_SIGNING_ALG_VALUES_SUPPORTED = "proof_signing_alg_values_supported";
+    public static final String CRYPTOGRAPHIC_BINDING_METHODS_SUPPORTED = "cryptographic_binding_methods_supported";
+    public static final String CREDENTIAL_SIGNING_ALG_VALUES_SUPPORTED = "credential_signing_alg_values_supported";
+    public static final String PROOF_TYPES_SUPPORTED = "proof_types_supported";
     public static final String MANDATORY = "mandatory";
     public static final String PRE_AUTH_CODE_PREFIX = "pre_auth_code:";
     public static final String CREDENTIAL_OFFER_PREFIX = "credential_offer:";

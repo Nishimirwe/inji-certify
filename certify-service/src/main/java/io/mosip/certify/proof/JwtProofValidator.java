@@ -1,8 +1,3 @@
-/*
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at https://mozilla.org/MPL/2.0/.
- */
 package io.mosip.certify.proof;
 
 import com.nimbusds.jose.JOSEException;
@@ -25,6 +20,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
+import io.mosip.certify.core.constants.Constants;
 import io.mosip.certify.core.constants.ErrorConstants;
 import io.mosip.certify.core.exception.InvalidRequestException;
 import lombok.extern.slf4j.Slf4j;
@@ -77,7 +73,7 @@ public class JwtProofValidator implements ProofValidator {
             } else {
                 throw new InvalidRequestException(UNSUPPORTED_ALGORITHM);
             }
-            List<String> algorithms = (List<String>) jwtConfiguration.getOrDefault("proof_signing_alg_values_supported", List.of());
+            List<String> algorithms = (List<String>) jwtConfiguration.getOrDefault(Constants.PROOF_SIGNING_ALG_VALUES_SUPPORTED, List.of());
             validateHeaderClaims(jwt.getHeader(), algorithms);
             JwtProofKeyManager jpkm = getInstance(jwt.getHeader().getKeyID());
             JWK jwk = jpkm.getKeyFromHeader(jwt.getHeader())
