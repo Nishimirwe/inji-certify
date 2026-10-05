@@ -14,7 +14,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.Assert.assertNotNull;
@@ -37,6 +39,8 @@ public class CredentialStatusServiceImplTest {
     @Before
     public void setUp() {
         MockitoAnnotations.openMocks(this);
+        // mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes={'revocation'}
+        ReflectionTestUtils.setField(credentialStatusService, "allowedStatusPurposes", List.of("revocation"));
     }
 
     @Test
@@ -69,13 +73,13 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_NullStatusPurpose_UsesStatusListCredentialPurpose() {
+    public void updateCredentialStatusV2_NullStatusPurpose_DefaultsToConfiguredPurpose() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusPurpose(null); // Null status purpose
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
-        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setStatusPurpose(null); // nullable column; the default must come from config, not from here
         mockStatusListCredential.setCapacityInKB(1024L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
@@ -122,13 +126,13 @@ public class CredentialStatusServiceImplTest {
     }
 
     @Test
-    public void updateCredentialStatusV2_EmptyStatusPurpose_UsesStatusListCredentialPurpose() {
+    public void updateCredentialStatusV2_EmptyStatusPurpose_DefaultsToConfiguredPurpose() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusPurpose(""); // Empty StatusPurpose
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
-        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setStatusPurpose(null); // nullable column; the default must come from config, not from here
         mockStatusListCredential.setCapacityInKB(1024L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
@@ -172,19 +176,18 @@ public class CredentialStatusServiceImplTest {
         });
 
         assertEquals("invalid_status_purpose", exception.getErrorCode());
-        assertEquals("statusPurpose mismatch: requested 'invalid_purpose' but status list '" +
-                statusListCredential + "' has purpose 'revocation'", exception.getMessage());
+        assertEquals("Invalid status purpose 'invalid_purpose'. Allowed values are: [revocation]", exception.getMessage());
     }
 
     @Test
-    public void should_throwInvalidStatusPurposeException_when_statusPurposeMismatchesStatusList() {
+    public void should_throwInvalidStatusPurposeException_when_statusPurposeNotConfigured_evenIfStoredOnStatusList() {
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
-        request.getCredentialStatus().setStatusPurpose("suspension"); // Different purpose
+        request.getCredentialStatus().setStatusPurpose("suspension"); // not in the configured allowed list
 
         StatusListCredential mockStatusListCredential = new StatusListCredential();
         mockStatusListCredential.setId(statusListCredential);
-        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setStatusPurpose("suspension"); // matches the stored list, which is not the reference
         mockStatusListCredential.setCapacityInKB(1024L); // 1MB capacity
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
@@ -194,8 +197,49 @@ public class CredentialStatusServiceImplTest {
         });
 
         assertEquals("invalid_status_purpose", exception.getErrorCode());
-        assertEquals("statusPurpose mismatch: requested 'suspension' but status list '" +
-                statusListCredential + "' has purpose 'revocation'", exception.getMessage());
+        assertEquals("Invalid status purpose 'suspension'. Allowed values are: [revocation]", exception.getMessage());
+    }
+
+    @Test
+    public void should_acceptConfiguredStatusPurpose_when_statusListStoresNoPurpose() {
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose("revocation");
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setId(statusListCredential);
+        mockStatusListCredential.setStatusPurpose(null); // would have been a mismatch against the stored list
+        mockStatusListCredential.setCapacityInKB(1024L);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+        when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+
+        assertEquals("revocation", response.getStatusPurpose());
+    }
+
+    @Test
+    public void should_throwInvalidStatusPurposeException_when_noStatusPurposeConfigured() {
+        ReflectionTestUtils.setField(credentialStatusService, "allowedStatusPurposes", List.of());
+        String statusListCredential = "https://example.com/status-list/xyz#87823";
+        UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
+        request.getCredentialStatus().setStatusPurpose("revocation"); // even a sensible value is refused without configuration
+
+        StatusListCredential mockStatusListCredential = new StatusListCredential();
+        mockStatusListCredential.setId(statusListCredential);
+        mockStatusListCredential.setStatusPurpose("revocation");
+        mockStatusListCredential.setCapacityInKB(1024L);
+
+        when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
+
+        CertifyException exception = assertThrows(CertifyException.class, () ->
+                credentialStatusService.updateCredentialStatus(request));
+
+        assertEquals("invalid_status_purpose", exception.getErrorCode());
+        assertEquals("No status purpose is configured: set mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes.",
+                exception.getMessage());
     }
 
     @Test

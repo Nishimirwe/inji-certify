@@ -11,8 +11,11 @@ import io.mosip.certify.repository.CredentialStatusTransactionRepository;
 import io.mosip.certify.repository.StatusListCredentialRepository;
 import io.mosip.certify.utils.BitStringStatusListUtils;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -23,6 +26,10 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
 
     @Autowired
     private StatusListCredentialRepository statusListCredentialRepository;
+
+    /** Status purposes a deployment allows; the first entry is the default when a request omits it. */
+    @Value("#{${mosip.certify.data-provider-plugin.credential-status.allowed-status-purposes:{}}}")
+    private List<String> allowedStatusPurposes;
 
     @Override
     public CredentialStatusResponse updateCredentialStatus(UpdateCredentialStatusRequest request) {
@@ -83,17 +90,18 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
                 maxCapacity + " for status list '" + statusListCredential.getId() + "'");
         }
 
-        // Validate and return statusPurpose
-        if(StringUtils.isEmpty(requestedPurpose)) {
-            return statusListCredential.getStatusPurpose();
-        } else {
-            if(!requestedPurpose.equals(statusListCredential.getStatusPurpose())) {
-                throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
-                    "statusPurpose mismatch: requested '" + requestedPurpose +
-                    "' but status list '" + statusListCredential.getId() + "' has purpose '" +
-                    statusListCredential.getStatusPurpose() + "'");
-            }
-            return requestedPurpose;
+
+        if (allowedStatusPurposes == null || allowedStatusPurposes.isEmpty()) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
+                "No status purpose is configured in this environment.");
         }
+        if (StringUtils.isEmpty(requestedPurpose)) {
+            return allowedStatusPurposes.getFirst();
+        }
+        if (!allowedStatusPurposes.contains(requestedPurpose)) {
+            throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
+                "Invalid status purpose '" + requestedPurpose + "'. Allowed values are: " + allowedStatusPurposes);
+        }
+        return requestedPurpose;
     }
 }
