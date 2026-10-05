@@ -971,5 +971,74 @@ public class CredentialConfigurationSupportedServiceImplTest {
         Assert.assertEquals(List.of("family_name"), result.getCredentialMetadataDTO().getClaims().getFirst().getPath());
         Assert.assertEquals("Last Name", result.getCredentialMetadataDTO().getClaims().getFirst().getDisplay().getFirst().getName());
     }
-}
 
+
+    @Test
+    public void should_throwCertifyException_when_qrSignatureAlgoUnsupported_onUpdate() {
+        CredentialConfigurationDTO mergedDto = credentialConfigurationDTO;
+        mergedDto.setSignatureAlgo("EdDSA");
+        mergedDto.setQrSettings(List.of(Map.of("key", "value")));
+        mergedDto.setQrSignatureAlgo("UNSUPPORTED_ALGO");
+
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-credential")).thenReturn(Optional.of(credentialConfig));
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(mergedDto);
+
+        CertifyException ex = assertThrows(CertifyException.class, () ->
+                credentialConfigurationService.updateCredentialConfiguration("test-credential", new CredentialConfigurationDTO()));
+
+        assertEquals(ErrorConstants.INVALID_QR_SIGNING_ALGORITHM, ex.getErrorCode());
+        verify(credentialConfigRepository, never()).save(any(CredentialConfig.class));
+    }
+
+    @Test
+    public void should_deriveSignatureAlgoFromCryptoSuite_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_onAdd() {
+        CredentialConfigurationDTO dto = credentialConfigurationDTO;
+        dto.setSignatureAlgo(null);
+        dto.setQrSettings(List.of(Map.of("key", "value")));
+        dto.setQrSignatureAlgo("EdDSA");
+
+        ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, false);
+
+        assertEquals("EdDSA", dto.getSignatureAlgo());
+        assertEquals("EdDSA", dto.getQrSignatureAlgo());
+    }
+
+    @Test
+    public void should_throwCertifyException_when_qrSignatureAlgoProvidedWithoutSignatureAlgo_forSdJwt_onAdd() {
+        CredentialConfigurationDTO dto = new CredentialConfigurationDTO();
+        dto.setCredentialFormat(VCFormats.DC_SD_JWT);
+        dto.setVcTemplate("test_template");
+        dto.setSdJwtVct("test-vct");
+        dto.setSignatureAlgo(null);
+        dto.setQrSettings(List.of(Map.of("key", "value")));
+        dto.setQrSignatureAlgo("EdDSA");
+
+        CertifyException ex = assertThrows(CertifyException.class, () ->
+                ReflectionTestUtils.invokeMethod(credentialConfigurationService, "validateCredentialConfiguration", dto, false));
+
+        assertEquals(ErrorConstants.DC_SD_JWT_MANDATORY_FIELDS_MISSING, ex.getErrorCode());
+    }
+
+    @Test
+    public void should_persistDerivedSignatureAlgo_when_signatureAlgoOmitted_onUpdate() {
+        Map<String, List<String>> bindingMethods = new LinkedHashMap<>();
+        bindingMethods.put("ldp_vc", List.of("did:jwk"));
+        ReflectionTestUtils.setField(credentialConfigurationService, "cryptographicBindingMethodsSupportedMap", bindingMethods);
+        credentialConfig.setSignatureAlgo(null);
+        CredentialConfigurationDTO mergedDto = credentialConfigurationDTO;
+        mergedDto.setSignatureAlgo(null);
+        mergedDto.setQrSettings(List.of(Map.of("key", "value")));
+        mergedDto.setQrSignatureAlgo("EdDSA");
+
+        when(credentialConfigRepository.findByCredentialConfigKeyId("test-credential")).thenReturn(Optional.of(credentialConfig));
+        doNothing().when(credentialConfigMapper).updateEntityFromDto(any(CredentialConfigurationDTO.class), any(CredentialConfig.class));
+        when(credentialConfigMapper.toDto(any(CredentialConfig.class))).thenReturn(mergedDto);
+        when(credentialConfigRepository.save(any(CredentialConfig.class))).thenReturn(credentialConfig);
+
+        credentialConfigurationService.updateCredentialConfiguration("test-credential", new CredentialConfigurationDTO());
+
+        verify(credentialConfigRepository).save(credentialConfig);
+        assertEquals("EdDSA", credentialConfig.getSignatureAlgo());
+    }
+}
