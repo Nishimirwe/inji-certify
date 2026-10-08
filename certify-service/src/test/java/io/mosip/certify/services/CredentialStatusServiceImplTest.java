@@ -388,8 +388,10 @@ public class CredentialStatusServiceImplTest {
     }
     
     @Test
-    public void should_defaultToConfiguredPurpose_when_statusPurposeIsBlank() {
-        // Whitespace is not a specified purpose, so it is treated the same as an omitted one.
+    public void should_throwInvalidStatusPurposeException_when_statusPurposeIsWhitespaceOnly() {
+        // Whitespace is a provided value, not an omitted one. "" is how clients serialize an
+        // unset field, so it defaults; nothing legitimately sends "   ", so it is rejected
+        // like any other value outside the configured list.
         String statusListCredential = "https://example.com/status-list/xyz#87823";
         UpdateCredentialStatusRequest request = createValidUpdateCredentialRequest(statusListCredential);
         request.getCredentialStatus().setStatusPurpose("   ");
@@ -399,12 +401,13 @@ public class CredentialStatusServiceImplTest {
         mockStatusListCredential.setCapacityInKB(20L);
 
         when(statusListCredentialRepository.findById(statusListCredential)).thenReturn(Optional.of(mockStatusListCredential));
-        when(credentialStatusTransactionRepository.save(any(CredentialStatusTransaction.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        CredentialStatusResponse response = credentialStatusService.updateCredentialStatus(request);
+        CertifyException exception = assertThrows(CertifyException.class, () -> {
+            credentialStatusService.updateCredentialStatus(request);
+        });
 
-        assertEquals("revocation", response.getStatusPurpose());
+        assertEquals("invalid_status_purpose", exception.getErrorCode());
+        assertEquals("Invalid status purpose '   '. Allowed values are: [revocation]", exception.getMessage());
     }
 
     @Test
