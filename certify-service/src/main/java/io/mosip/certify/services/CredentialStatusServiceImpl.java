@@ -95,8 +95,8 @@ public class CredentialStatusServiceImpl implements CredentialStatusService {
             throw new CertifyException(ErrorConstants.INVALID_STATUS_PURPOSE,
                 "No status purpose is configured in this environment.");
         }
-        // isBlank, not isEmpty: a whitespace-only value specifies no purpose either.
-        if (StringUtils.isBlank(requestedPurpose)) {
+    
+        if (StringUtils.isEmpty(requestedPurpose)) {
             return allowedStatusPurposes.getFirst();
         }
         if (!allowedStatusPurposes.contains(requestedPurpose)) {
