@@ -142,6 +142,10 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                 }
                 // sdClaim lists the selective disclosure paths, which only dc+sd-jwt uses, so it is checked only here.
                 SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim());
+                // Only in DataProvider mode is the credential rendered from vcTemplate, so only there can it say which paths exist.
+                if (pluginMode.equals("DataProvider")) {
+                    SdClaimValidator.validateSdClaimInTemplate(credentialConfig.getSdClaim(), credentialConfig.getVcTemplate());
+                }
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());
