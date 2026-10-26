@@ -141,11 +141,7 @@ public class CredentialConfigurationServiceImpl implements CredentialConfigurati
                     throw new CertifyException(ErrorConstants.DC_SD_JWT_CONFIG_EXISTS, "Configuration already exists for the specified vct.");
                 }
                 // sdClaim lists the selective disclosure paths, which only dc+sd-jwt uses, so it is checked only here.
-                SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim());
-                // Only in DataProvider mode is the credential rendered from vcTemplate, so only there can it say which paths exist.
-                if (pluginMode.equals("DataProvider")) {
-                    SdClaimValidator.validateSdClaimInTemplate(credentialConfig.getSdClaim(), credentialConfig.getVcTemplate());
-                }
+                SdClaimValidator.validateSdClaim(credentialConfig.getSdClaim(), credentialConfig.getVcTemplate(), pluginMode);
                 break;
             default:
                 throw new CertifyException(ErrorConstants.UNSUPPORTED_FORMAT, "Unsupported credential format: " + credentialConfig.getCredentialFormat());

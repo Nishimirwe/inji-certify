@@ -15,15 +15,28 @@ public class SdClaimValidator {
     }
 
     /**
-     * @param sdClaim the comma separated paths as configured, or null when the configuration declares no
-     *                selective disclosure
-     * @throws CertifyException with {@link ErrorConstants#INVALID_SD_CLAIM} for the first entry that is
-     *                          blank or not a well formed selective disclosure path
+     * Every entry must be a well formed selective disclosure path. In DataProvider mode, where the credential
+     * is rendered from the template, each path must also be declared in it, or VC fetch fails it for every
+     * holder. A malformed entry is reported before an undeclared one.
+     *
+     * @param sdClaim    the comma separated paths as configured, or null when the configuration declares no
+     *                   selective disclosure
+     * @param vcTemplate the base64 encoded template, as the configuration stores it
+     * @param pluginMode the deployment's plugin mode
+     * @throws CertifyException with {@link ErrorConstants#INVALID_SD_CLAIM} for the first entry that is blank,
+     *                          not a well formed selective disclosure path, or not declared in the template
      */
-    public static void validateSdClaim(String sdClaim) {
+    public static void validateSdClaim(String sdClaim, String vcTemplate, String pluginMode) {
         if (sdClaim == null) {
             return;
         }
+        validatePathSyntax(sdClaim);
+        if ("DataProvider".equals(pluginMode)) {
+            validatePathsInTemplate(sdClaim, vcTemplate);
+        }
+    }
+
+    private static void validatePathSyntax(String sdClaim) {
         // The -1 limit keeps trailing empty entries. A plain split(",") reads "$.fullName," as one valid
         // path and "," as no paths at all, so both would pass.
         for (String entry : sdClaim.split(",", -1)) {
@@ -39,17 +52,8 @@ public class SdClaimValidator {
         }
     }
 
-    /**
-     * Each path must be declared in the template the credential is rendered from, or VC fetch fails it for
-     * every holder. 
-     * @param sdClaim    the comma separated paths as configured, or null when the configuration declares no
-     *                   selective disclosure
-     * @param vcTemplate the base64 encoded template, as the configuration stores it
-     * @throws CertifyException with {@link ErrorConstants#INVALID_SD_CLAIM} for the first path the template
-     *                          does not declare
-     */
-    public static void validateSdClaimInTemplate(String sdClaim, String vcTemplate) {
-        if (sdClaim == null || vcTemplate == null) {
+    private static void validatePathsInTemplate(String sdClaim, String vcTemplate) {
+        if (vcTemplate == null) {
             return;
         }
         // Decoded as VelocityTemplatingEngineImpl.getTemplate does, so this agrees with the check at VC fetch.
