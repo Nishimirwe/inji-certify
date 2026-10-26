@@ -42,8 +42,7 @@ public class CredentialConfigSdClaimValidationTest {
     private static final String STORED_SD_CLAIM = "$.fullName, $.address.region, $.phoneNumbers[0]";
 
     /**
-     * The dc+sd-jwt template the requests carry, base64 encoded as the API takes it. nickname is emitted only
-     * when the holder has one, as an optional field is.
+     * The dc+sd-jwt template (example) the requests carry, base64 encoded as the API takes it.
      */
     private static final String SD_JWT_TEMPLATE = base64("""
             {
@@ -452,7 +451,7 @@ public class CredentialConfigSdClaimValidationTest {
         assertAddAccepted("$.fullName,$.fullName");
     }
 
-    // ================================================================== add: path not declared in the template
+    // add: path not declared in the template
 
     /** Well formed, but the template has no such field, so VC fetch would fail for every holder. */
     @Test
