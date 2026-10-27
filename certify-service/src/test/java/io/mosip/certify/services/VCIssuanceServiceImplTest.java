@@ -534,7 +534,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_ConfigV2_PluginReturnsV1Credential_ThrowsCredentialRequestDenied() throws Exception {
+    public void should_denyCredentialRequest_when_issuedCredentialUsesDifferentDataModelContext() throws Exception {
         // MOSIP ID case (#723): IDA builds @context from its own config and ignores the requested one.
         stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
 
@@ -547,7 +547,7 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_ConfigV2_PluginReturnsV1ContextAsString_ThrowsCredentialRequestDenied() throws Exception {
+    public void should_denyCredentialRequest_when_issuedContextIsSingleStringWithDifferentDataModel() throws Exception {
         // JSON-LD allows a single @context string instead of an array.
         stubLdpIssuance(List.of(VCDM2_CONTEXT), VCDM1_CONTEXT);
 
@@ -556,14 +556,14 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_ConfigV2_PluginReturnsV2Credential_Success() throws Exception {
+    public void should_issueCredential_when_issuedDataModelContextMatchesConfig() throws Exception {
         stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM2_CONTEXT, EXTRA_CONTEXT));
 
         assertNotNull(issuanceService.getCredential(request));
     }
 
     @Test
-    public void getCredential_LDP_ConfigV1NotFirst_PluginReturnsV1Credential_Success() throws Exception {
+    public void should_issueCredential_when_configDataModelContextIsNotFirstEntry() throws Exception {
         // contextURLs are stored sorted, so the data model URL is not necessarily the first entry.
         stubLdpIssuance(List.of(EXTRA_CONTEXT, VCDM1_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
 
@@ -571,14 +571,14 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
-    public void getCredential_LDP_ConfigWithoutDataModelContext_Success() throws Exception {
+    public void should_issueCredential_when_configHasNoDataModelContext() throws Exception {
         stubLdpIssuance(List.of(EXTRA_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
 
         assertNotNull(issuanceService.getCredential(request));
     }
 
     @Test
-    public void getCredential_LDP_PluginReturnsCredentialWithoutDataModelContext_Success() throws Exception {
+    public void should_issueCredential_when_issuedCredentialHasNoDataModelContext() throws Exception {
         // Only a credential that names a different data model is refused; one naming none is left to the plugin.
         stubLdpIssuance(List.of(VCDM2_CONTEXT), null);
 
