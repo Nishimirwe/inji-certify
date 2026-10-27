@@ -505,4 +505,83 @@ public class VCIssuanceServiceImplTest {
         CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
         assertEquals("PLUGIN_ERROR_CODE", ex.getErrorCode());
     }
+
+    private static final String VCDM1_CONTEXT = "https://www.w3.org/2018/credentials/v1";
+    private static final String VCDM2_CONTEXT = "https://www.w3.org/ns/credentials/v2";
+    private static final String EXTRA_CONTEXT = "https://example.org/insurance-context.json";
+
+    /** LDP request whose credential config has configContext, answered by the plugin with a VC carrying vcContext. */
+    private void stubLdpIssuance(List<String> configContext, Object vcContext) throws Exception {
+        mockGlobalCredentialIssuerMetadataDTO.getCredentialConfigurationSupportedDTO()
+                .get("test-credential-id-ldp").getCredentialDefinition().setContext(configContext);
+        request = createValidCredentialRequest(VCFormats.LDP_VC);
+        when(parsedAccessToken.isActive()).thenReturn(true);
+        when(parsedAccessToken.getClaims()).thenReturn(claimsFromAccessToken);
+        when(vciCacheService.getNonceTransaction(anyString())).thenReturn(transaction);
+        when(proofValidatorFactory.getProofValidator(anyString())).thenReturn(proofValidator);
+        when(proofValidator.validate(eq("test-client"), eq(TEST_CNONCE), anyString(), any())).thenReturn(true);
+        when(proofValidator.getKeyMaterial(anyString())).thenReturn(HOLDER_ID);
+
+        Map<String, Object> vc = new LinkedHashMap<>();
+        if (vcContext != null) {
+            vc.put("@context", vcContext);
+        }
+        vc.put("type", List.of("VerifiableCredential", "TestCredential"));
+        VCResult<JsonLDObject> vcResult = new VCResult<>();
+        vcResult.setCredential(JsonLDObject.fromJsonObject(vc));
+        when(vcIssuancePlugin.getVerifiableCredentialWithLinkedDataProof(any(VCRequestDto.class), eq(HOLDER_ID), eq(claimsFromAccessToken)))
+                .thenReturn(vcResult);
+    }
+
+    @Test
+    public void getCredential_LDP_ConfigV2_PluginReturnsV1Credential_ThrowsCredentialRequestDenied() throws Exception {
+        // MOSIP ID case (#723): IDA builds @context from its own config and ignores the requested one.
+        stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("credential_request_denied", ex.getErrorCode());
+        assertEquals("The requested credential context " + VCDM2_CONTEXT + " is not supported by the issuer; "
+                + "the issued credential uses " + VCDM1_CONTEXT + ".", ex.getMessage());
+        verify(auditWrapper).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.ERROR), any(), isNull());
+        verify(auditWrapper, never()).logAudit(eq(io.mosip.certify.api.util.Action.VC_ISSUANCE), eq(io.mosip.certify.api.util.ActionStatus.SUCCESS), any(), any());
+    }
+
+    @Test
+    public void getCredential_LDP_ConfigV2_PluginReturnsV1ContextAsString_ThrowsCredentialRequestDenied() throws Exception {
+        // JSON-LD allows a single @context string instead of an array.
+        stubLdpIssuance(List.of(VCDM2_CONTEXT), VCDM1_CONTEXT);
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("credential_request_denied", ex.getErrorCode());
+    }
+
+    @Test
+    public void getCredential_LDP_ConfigV2_PluginReturnsV2Credential_Success() throws Exception {
+        stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM2_CONTEXT, EXTRA_CONTEXT));
+
+        assertNotNull(issuanceService.getCredential(request));
+    }
+
+    @Test
+    public void getCredential_LDP_ConfigV1NotFirst_PluginReturnsV1Credential_Success() throws Exception {
+        // contextURLs are stored sorted, so the data model URL is not necessarily the first entry.
+        stubLdpIssuance(List.of(EXTRA_CONTEXT, VCDM1_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
+
+        assertNotNull(issuanceService.getCredential(request));
+    }
+
+    @Test
+    public void getCredential_LDP_ConfigWithoutDataModelContext_Success() throws Exception {
+        stubLdpIssuance(List.of(EXTRA_CONTEXT), List.of(VCDM1_CONTEXT, EXTRA_CONTEXT));
+
+        assertNotNull(issuanceService.getCredential(request));
+    }
+
+    @Test
+    public void getCredential_LDP_PluginReturnsCredentialWithoutDataModelContext_Success() throws Exception {
+        // Only a credential that names a different data model is refused; one naming none is left to the plugin.
+        stubLdpIssuance(List.of(VCDM2_CONTEXT), null);
+
+        assertNotNull(issuanceService.getCredential(request));
+    }
 }
