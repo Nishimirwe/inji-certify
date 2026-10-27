@@ -192,6 +192,7 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
      * The plugin builds the credential, and may use a different VC data model than the credential config
      * advertises (MOSIP IDA takes @context from its own configuration). Refuse such a credential instead of
      * handing the wallet one it did not ask for. A credential that names no data model context is not checked.
+     * One naming both is refused: its first @context entry sets its data model, so [v1, v2] is a v1 credential.
      */
     private void validateDataModelContext(List<String> requestedContext, Object credential) {
         if (!(credential instanceof JsonLDObject jsonLDObject))
@@ -200,7 +201,8 @@ public class VCIssuanceServiceImpl implements VCIssuanceService {
         List<String> requested = dataModelContexts(requestedContext);
         List<String> issued = dataModelContexts(issuedContext instanceof String context ? List.of(context)
                 : issuedContext instanceof List<?> contexts ? contexts : List.of());
-        if (requested.isEmpty() || issued.isEmpty() || !Collections.disjoint(requested, issued))
+        if (requested.isEmpty() || issued.isEmpty()
+                || (issued.size() == 1 && requested.contains(issued.getFirst())))
             return;
 
         log.error("Plugin issued a credential with data model context {} for a credential config with {}", issued, requested);

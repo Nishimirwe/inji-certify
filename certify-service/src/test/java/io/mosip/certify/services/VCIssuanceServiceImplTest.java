@@ -556,6 +556,17 @@ public class VCIssuanceServiceImplTest {
     }
 
     @Test
+    public void should_denyCredentialRequest_when_issuedCredentialNamesBothDataModels() throws Exception {
+        // The first @context entry sets the data model, so [v1, v2] is a v1 credential even though v2 is listed.
+        stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM1_CONTEXT, VCDM2_CONTEXT, EXTRA_CONTEXT));
+
+        CertifyException ex = assertThrows(CertifyException.class, () -> issuanceService.getCredential(request));
+        assertEquals("credential_request_denied", ex.getErrorCode());
+        assertEquals("The requested credential context " + VCDM2_CONTEXT + " is not supported by the issuer; "
+                + "the issued credential uses " + VCDM1_CONTEXT + ", " + VCDM2_CONTEXT + ".", ex.getMessage());
+    }
+
+    @Test
     public void should_issueCredential_when_issuedDataModelContextMatchesConfig() throws Exception {
         stubLdpIssuance(List.of(VCDM2_CONTEXT), List.of(VCDM2_CONTEXT, EXTRA_CONTEXT));
 
